@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using TMPro;
 
 public class BasinController : MonoBehaviour
 {
@@ -9,20 +10,24 @@ public class BasinController : MonoBehaviour
 
     [Header("Pool Settings")]
     public float initialWater = 1f;
-    public float minWater = 0.3f;
+    public float minWater = 0f;
     public float maxWater = 2.0f;
+    public float minWaterWarning = 0.5f;
+    public float maxWaterWarning = 1.5f;
 
     [Header("Consumption")]
-    [Tooltip("Base water use per second at start")]
     public float baseConsumptionRate = 0.1f;
-
-    [Tooltip("How much per second the consumptionRate increases")]
     public float consumptionGrowthRate = 0.005f;
-
     public Vector3 plantGrowthRate = new Vector3(0.005f, 0.005f, 0.005f);
 
+    [Header("Water Pool")]
     private float waterPool;
     private float consumptionRate;
+
+    [Header("Text/UI")]
+    public TextMeshProUGUI warningText;
+    public GameObject deathPanel;
+    public TextMeshProUGUI deathText;
 
     void Start()
     {
@@ -46,20 +51,24 @@ public class BasinController : MonoBehaviour
         waterPool -= consumed;
 
         // 4) Check for under/over‑water
-        if (waterPool < (minWater * 2))
+        if (waterPool < minWaterWarning)
         {
-            warningText = "Underwatering!";
+            warningText.text = "Underwatering!";
+            warningText.gameObject.SetActive(true);
             if (waterPool < minWater)
-                Die("Under‑watered!");
+                Die("Under-watered");
         }
-        else if (waterPool < (maxWater / 2))
+        else if (waterPool > maxWaterWarning)
         {
-            warningText = "Underwatering!";
-            if (waterPool < minWater)
-                Die("Under‑watered!");
+            warningText.text = "Overwatering!";
+            warningText.gameObject.SetActive(true);
+            if (waterPool > maxWater)
+                Die("Over-watered");
         }
-        else if (waterPool > maxWater)
-            Die("Over‑watered!");
+        else
+        {
+            warningText.gameObject.SetActive(false);
+        }
 
         // Debug
         Debug.Log(
@@ -69,11 +78,34 @@ public class BasinController : MonoBehaviour
 
     private void Die(string reason)
     {
-        Debug.Log($"Plant died: {reason}");
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        // pause
+        Time.timeScale = 0f;
+
+        // hide any ongoing warnings
+        warningText.gameObject.SetActive(false);
+
+        // show the death UI
+        deathText.gameObject.SetActive(true);
+        deathPanel.gameObject.SetActive(true);
+
+        // pick the correct message based on why the plant died
+        switch (reason)
+        {
+            case "Under-watered":
+                deathText.text =
+                    "Under-watering a plant can cause droopy leaves, saggy stems, and eventually death.";
+                break;
+
+            case "Over-watered":
+                deathText.text =
+                    "Over-watering can lead to root rot, poor oxygen uptake, and eventually kill the plant.";
+                break;
+
+            default:
+                deathText.text =
+                    "The plant has died due to an unknown issue.";
+                break;
+        }
     }
+
 }
