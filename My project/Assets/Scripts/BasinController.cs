@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using TMPro;
+using System.Collections.Generic;
 
 public class BasinController : MonoBehaviour
 {
@@ -7,6 +8,7 @@ public class BasinController : MonoBehaviour
 
     [Header("External Provider")]
     [SerializeField] private TankController tankCtrl;
+    [SerializeField] private ThermometerController thermoCtrl;
 
     [Header("Pool Settings")]
     public float initialWater = 1f;
@@ -14,6 +16,10 @@ public class BasinController : MonoBehaviour
     public float maxWater = 2.0f;
     public float minWaterWarning = 0.5f;
     public float maxWaterWarning = 1.5f;
+
+    [Header("Temperature Check")]
+    public float tempThreshold = 2f;
+    public float tempThresholdWarning = 1f;
 
     [Header("Consumption")]
     public float baseConsumptionRate = 0.1f;
@@ -37,43 +43,67 @@ public class BasinController : MonoBehaviour
 
     void Update()
     {
+        // Grow the plant
         plant.transform.localScale += plantGrowthRate * Time.deltaTime;
 
-        // 1) Slowly ramp up the plant’s consumption rate
+        // 1) Ramp up consumption
         consumptionRate += consumptionGrowthRate * Time.deltaTime;
 
-        // 2) Add whatever water the tank is providing (units/sec -> units/frame)
+        // 2) Fill from the tank
         float added = tankCtrl.waterProvided * Time.deltaTime;
         waterPool += added;
 
-        // 3) Subtract the (now higher) consumption
+        // 3) Subtract consumption
         float consumed = consumptionRate * Time.deltaTime;
         waterPool -= consumed;
 
-        // 4) Check for under/over‑water
+        // 4) Compute temperature difference
+        float tempDiff = thermoCtrl.currentTemperature - thermoCtrl.desiredTemperature;
+
+        // 5) Collect any active warnings
+        var warnings = new List<string>();
+
+        // Water warnings
         if (waterPool < minWaterWarning)
         {
-            warningText.text = "Underwatering!";
-            warningText.gameObject.SetActive(true);
+            warnings.Add("Underwatering!");
             if (waterPool < minWater)
                 Die("Under-watered");
         }
-        else if (waterPool > maxWaterWarning)
+        if (waterPool > maxWaterWarning)
         {
-            warningText.text = "Overwatering!";
-            warningText.gameObject.SetActive(true);
+            warnings.Add("Overwatering!");
             if (waterPool > maxWater)
                 Die("Over-watered");
+        }
+
+        // Temperature warnings
+        if (tempDiff > tempThresholdWarning)
+        {
+            warnings.Add("Overheating!");
+            if (tempDiff > tempThreshold)
+                Die("Overheated");
+        }
+        if (tempDiff < -tempThresholdWarning)
+        {
+            warnings.Add("Freezing!");
+            if (tempDiff < -tempThreshold)
+                Die("Too-cold");
+        }
+
+        // 6) Show or hide the warning panel
+        if (warnings.Count > 0)
+        {
+            warningText.text = string.Join("\n", warnings);
+            warningText.gameObject.SetActive(true);
         }
         else
         {
             warningText.gameObject.SetActive(false);
         }
 
-        // Debug
-        Debug.Log(
-            $"[Basin] Pool={waterPool:F2}  +{added:F2}  -{consumed:F2}  (rate={consumptionRate:F3})"
-        );
+        // Optional: debug output
+        Debug.Log($"[Basin] Pool={waterPool:F2} +{added:F2} -{consumed:F2}  TempDiff={tempDiff:F2}");
     }
 
     private void Die(string reason)
@@ -99,6 +129,14 @@ public class BasinController : MonoBehaviour
             case "Over-watered":
                 deathText.text =
                     "Over-watering can lead to root rot, poor oxygen uptake, and eventually kill the plant.";
+                break;
+
+            case "Too-cold":
+                deathText.text = "Exposure to cold slows metabolism and halts growth.";
+                break;
+                
+            case "Overheated":
+                deathText.text = "Excess heat denatures proteins and burns the plant.";
                 break;
 
             default:
