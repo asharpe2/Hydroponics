@@ -52,11 +52,18 @@ public class BasinController : MonoBehaviour
     public TextMeshProUGUI deathText;
     private bool isGameOver = false;
 
+    private GameController gameController;
+
     void Start()
     {
         waterPool = initialWater;
         consumptionRate = baseConsumptionRate;
         mineralsPool = initialMinerals;
+    }
+    
+    void Awake()
+    {
+        gameController = FindObjectOfType<GameController>();
     }
 
     void Update()

@@ -55,7 +55,7 @@ public class DialController : MonoBehaviour
                                    mw.x - transform.position.x) * Mathf.Rad2Deg;
 
         // how much the mouse has moved since OnMouseDown
-        float delta = rawDeg - startMouseAngle;
+        float delta = Mathf.DeltaAngle(startMouseAngle, rawDeg);
 
         // apply that delta to the dial’s starting angle
         float angle = startDialAngle + delta;
