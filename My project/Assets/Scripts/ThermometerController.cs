@@ -19,7 +19,7 @@ public class ThermometerController : MonoBehaviour, IAdjustableResource
     public float minChangeInterval = 15f;
     public float maxChangeInterval = 30f;
     [Tooltip("How fast the needle moves (° per second)")]
-    public float needleSpeed = 1f;
+    public float needleSpeed = 1.5f;
 
     [Header("UI Elements")]
     [SerializeField] private Image currentTempBar = null;

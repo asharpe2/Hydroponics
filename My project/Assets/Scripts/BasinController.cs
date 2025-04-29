@@ -30,113 +30,171 @@ public class BasinController : MonoBehaviour
     private float waterPool;
     private float consumptionRate;
 
+    [Header("Minerals Pool")]
+    [Tooltip("Starting minerals in the basin")]
+    public float initialMinerals = 1f;
+    [Tooltip("Warning threshold for minerals (low)")]
+    public float minMineralsWarning = 0.5f;
+    [Tooltip("Warning threshold for minerals (high)")]
+    public float maxMineralsWarning = 1.5f;
+    [Tooltip("Death threshold for minerals (low)")]
+    public float minMinerals = 0f;
+    [Tooltip("Death threshold for minerals (high)")]
+    public float maxMinerals = 2f;
+    [Tooltip("How many minerals the plant uses per second")]
+    public float mineralsConsumptionRate = 0.05f;
+
+    private float mineralsPool;
+
     [Header("Text/UI")]
     public TextMeshProUGUI warningText;
     public GameObject deathPanel;
     public TextMeshProUGUI deathText;
+    private bool isGameOver = false;
 
     void Start()
     {
         waterPool = initialWater;
         consumptionRate = baseConsumptionRate;
+        mineralsPool = initialMinerals;
     }
 
     void Update()
     {
-        // Grow the plant
+        if (isGameOver)
+            return;
+
+        // 0) Grow the plant
         plant.transform.localScale += plantGrowthRate * Time.deltaTime;
 
-        // 1) Ramp up consumption
+        // 1) Win check: when scale.x >= 1, we stop and show the Victory panel
+        if (plant.transform.localScale.x >= 1f)
+        {
+            Die("Victory");
+            return;
+        }
+
+        // 2) Ramp up water consumption
         consumptionRate += consumptionGrowthRate * Time.deltaTime;
 
-        // 2) Fill from the tank
+        // 3) Add water from the tank
         float added = tankCtrl.waterProvided * Time.deltaTime;
         waterPool += added;
 
-        // 3) Subtract consumption
+        // 4) Subtract plant’s consumption
         float consumed = consumptionRate * Time.deltaTime;
         waterPool -= consumed;
 
-        // 4) Compute temperature difference
+        // 5) Subtract mineral drawdown
+        mineralsPool -= mineralsConsumptionRate * Time.deltaTime;
+
+        // 6) Temperature delta
         float tempDiff = thermoCtrl.currentTemperature - thermoCtrl.desiredTemperature;
 
-        // 5) Collect any active warnings
+        // 7) Build up any warnings
         var warnings = new List<string>();
-
-        // Water warnings
         if (waterPool < minWaterWarning)
         {
             warnings.Add("Underwatering!");
-            if (waterPool < minWater)
-                Die("Under-watered");
+            if (waterPool < minWater) Die("Under-watered");
         }
         if (waterPool > maxWaterWarning)
         {
             warnings.Add("Overwatering!");
-            if (waterPool > maxWater)
-                Die("Over-watered");
+            if (waterPool > maxWater) Die("Over-watered");
         }
-
-        // Temperature warnings
         if (tempDiff > tempThresholdWarning)
         {
             warnings.Add("Overheating!");
-            if (tempDiff > tempThreshold)
-                Die("Overheated");
+            if (tempDiff > tempThreshold) Die("Overheated");
         }
         if (tempDiff < -tempThresholdWarning)
         {
             warnings.Add("Freezing!");
-            if (tempDiff < -tempThreshold)
-                Die("Too-cold");
+            if (tempDiff < -tempThreshold) Die("Too-cold");
+        }
+        if (mineralsPool < minMineralsWarning)
+        {
+            warnings.Add("Minerals low!");
+            if (mineralsPool < minMinerals) Die("Under-minerals");
+        }
+        if (mineralsPool > maxMineralsWarning)
+        {
+            warnings.Add("Mineral Overload!");
+            if (mineralsPool > maxMinerals) Die("Over-minerals");
         }
 
-        // 6) Show or hide the warning panel
+        // 8) Show/hide the warning text
         if (warnings.Count > 0)
         {
             warningText.text = string.Join("\n", warnings);
-            warningText.gameObject.SetActive(true);
+            warningText.gameObject.SetActive(!isGameOver);
         }
         else
         {
             warningText.gameObject.SetActive(false);
         }
 
-        // Optional: debug output
-        Debug.Log($"[Basin] Pool={waterPool:F2} +{added:F2} -{consumed:F2}  TempDiff={tempDiff:F2}");
+        // (optional) debug
+        Debug.Log($"[Basin] Water={waterPool:F2}+{added:F2}-{consumed:F2}, " +
+                  $"Min={mineralsPool:F2}, TempDiff={tempDiff:F2}");
     }
 
     private void Die(string reason)
     {
-        // pause
-        Time.timeScale = 0f;
+        // mark it so Update() stops
+        isGameOver = true;
 
-        // hide any ongoing warnings
+        // hide warnings
         warningText.gameObject.SetActive(false);
 
-        // show the death UI
-        deathText.gameObject.SetActive(true);
-        deathPanel.gameObject.SetActive(true);
+        // pause the game
+        Time.timeScale = 0f;
 
-        // pick the correct message based on why the plant died
+        // show the death/win UI
+        deathPanel.SetActive(true);
+        deathText.gameObject.SetActive(true);
+
         switch (reason)
         {
             case "Under-watered":
                 deathText.text =
-                    "Under-watering a plant can cause droopy leaves, saggy stems, and eventually death.";
+                    "Without enough water plants can't maintain turgor pressure, causing wilted leaves, drooping stems, and eventual death.";
                 break;
 
             case "Over-watered":
                 deathText.text =
-                    "Over-watering can lead to root rot, poor oxygen uptake, and eventually kill the plant.";
+                    "Too much water drowns the roots, blocks oxygen, and encourages root rot, ultimately killing the plant.";
                 break;
 
             case "Too-cold":
-                deathText.text = "Exposure to cold slows metabolism and halts growth.";
+                deathText.text =
+                    "Cold temperatures slow a plant’s metabolism, stop growth, and can permanently damage cells.";
                 break;
-                
+
             case "Overheated":
-                deathText.text = "Excess heat denatures proteins and burns the plant.";
+                deathText.text =
+                    "Extreme heat damages proteins and tissues in plants, leading to dehydration and death.";
+                break;
+
+            case "Under-minerals":
+                deathText.text =
+                    "Without enough minerals, plants can't perform essential processes like photosynthesis and growth, even if water and light are plentiful.";
+                break;
+
+            case "Over-minerals":
+                deathText.text =
+                    "Excess minerals create a toxic environment, disrupting water balance and damaging roots.";
+                break;
+
+            case "Victory":
+                Time.timeScale = 0f;
+                deathText.text =
+                    "🎉 Congratulations! You’ve grown a fully mature plant!\n\n" +
+                    "Hydroponics uses up to 90% less water than soil, " +
+                    "allows precise nutrient control, and can grow fresh crops " +
+                    "in zero-gravity environments, making it a key technology " +
+                    "for long-term space missions.";
                 break;
 
             default:
@@ -146,4 +204,12 @@ public class BasinController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Called by MineralDragController on a successful drop.
+    /// </summary>
+    public void ApplyMinerals(float amount)
+    {
+        mineralsPool += amount;
+        Debug.Log($"[Basin] Added {amount} minerals. Pool = {mineralsPool:F2}");
+    }
 }

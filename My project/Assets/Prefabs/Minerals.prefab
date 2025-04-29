@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 709013001185442110}
   - component: {fileID: 5708509476806316095}
+  - component: {fileID: 2094825990627629139}
   m_Layer: 0
   m_Name: Minerals
   m_TagString: Untagged
@@ -84,3 +85,17 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &2094825990627629139
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1325789945101044094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b13a43d9301295468a95690573f06a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clumpPrefab: {fileID: 0}
+  mineralsPerDrop: 0.5
